@@ -1,0 +1,91 @@
+Exp8:                                                                           import numpy as np
+import tensorflow as tf
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, GlobalAveragePooling1D, Dense
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.callbacks import EarlyStopping
+
+# --- 1. Parameters and Data Loading ---
+VOCAB_SIZE = 10000
+MAX_REVIEW_LENGTH = 256
+EMBEDDING_DIM = 16
+EPOCHS = 15
+BATCH_SIZE = 512
+
+print("Loading and Preparing Data...")
+# Load data (pre-processed integer sequences)
+(train_data, train_labels), (test_data, test_labels) = imdb.load_data(num_words=VOCAB_SIZE)
+
+# Standardize review length with padding/truncating
+train_data = pad_sequences(train_data, maxlen=MAX_REVIEW_LENGTH, padding='post', truncating='post')
+test_data = pad_sequences(test_data, maxlen=MAX_REVIEW_LENGTH, padding='post', truncating='post')
+
+# Convert labels to float32
+train_labels = np.asarray(train_labels).astype('float32')
+test_labels = np.asarray(test_labels).astype('float32')
+
+# Use a validation set
+X_val = train_data[:10000]
+partial_X_train = train_data[10000:]
+y_val = train_labels[:10000]
+partial_y_train = train_labels[10000:]
+print("Data preparation complete.")                          # --- 2. Model Design, Compilation, and Training ---
+print("\nBuilding, Compiling, and Training Model...")
+model = Sequential([
+    # Embedding maps integer IDs to dense vectors
+    Embedding(VOCAB_SIZE, EMBEDDING_DIM, input_length=MAX_REVIEW_LENGTH),
+    # GlobalAveragePooling1D simplifies the sequence data
+    GlobalAveragePooling1D(),
+    # Dense hidden layer
+    Dense(16, activation='relu'),
+    # Output layer (Sigmoid for binary classification probability)
+    Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# Use Early Stopping to halt training if validation loss doesn't improve
+early_stopping = EarlyStopping(monitor='val_loss', patience=2, restore_best_weights=True)
+
+history = model.fit(
+    partial_X_train,
+    partial_y_train,
+    epochs=EPOCHS,
+    batch_size=BATCH_SIZE,
+    validation_data=(X_val, y_val),
+    callbacks=[early_stopping],
+    verbose=1 # Show training progress
+)
+print("Training complete.")                                       # --- 3. Evaluation ---
+
+print("\nEvaluating Model on Test Data...")
+loss, accuracy = model.evaluate(test_data, test_labels, verbose=0)
+
+print(f"\nModel Evaluation (15 Epochs):")
+print(f"Test Loss: {loss:.4f}")
+print(f"Test Accuracy: {accuracy*100:.2f}%")                # --- 4. Simple Custom Prediction (Single Function) ---
+
+print("\n--- Custom Prediction Test ---")
+
+def predict_sentiment_short(review_text):
+    # 1. Get word index map
+    word_index = imdb.get_word_index()
+
+    # 2. Tokenize and convert to IDs (Offset +3, 2 for unknown)
+    token_sequence = [word_index.get(word, 2) + 3 for word in review_text.lower().split()]
+
+    # 3. Pad the sequence
+    preprocessed_input = pad_sequences([token_sequence], maxlen=MAX_REVIEW_LENGTH, padding='post', truncating='post')
+
+    # 4. Predict
+    prediction = model.predict(preprocessed_input, verbose=0)[0][0]
+    sentiment = "Positive" if prediction >= 0.5 else "Negative"
+
+    print(f"Review: \"{review_text[:40]}...\"")
+    print(f"Prediction: {sentiment} ({prediction:.4f})")
+
+predict_sentiment_short("This movie was brilliant and breathtaking, an absolute masterpiece.")
+predict_sentiment_short("I hated every boring second of this dreadful film. Terrible!")
