@@ -1,0 +1,75 @@
+Exp10:                                                                             # Install all dependencies automatically
+!pip install streamlit streamlit_jupyter pillow tensorflow -q
+
+# Start Streamlit inside Colab
+from streamlit_jupyter import StreamlitPatcher
+StreamlitPatcher().jupyter()
+
+import streamlit as st
+import numpy as np
+from PIL import Image
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.utils import to_categorical
+import os
+
+st.title("MNIST Digit Classifier Using Streamlit")
+st.write("Upload a hand-written digit image (28x28 pixels).")
+
+
+@st.cache_resource
+def train_and_load_model():
+    # If model already created, load directly
+    if os.path.exists("mnist_model.h5"):
+        return load_model("mnist_model.h5")
+
+    # Load MNIST dataset
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+    # Normalize
+    x_train = x_train / 255.0
+    x_test = x_test / 255.0
+
+    # One-hot encode labels
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
+
+    # Simple neural network
+    model = Sequential([
+        Flatten(input_shape=(28, 28)),
+        Dense(128, activation='relu'),
+        Dense(10, activation='softmax')
+    ])
+
+    # Compile model
+    model.compile(optimizer='adam',
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    # Train model — small epochs for speed
+    model.fit(x_train, y_train, epochs=2, batch_size=32, verbose=1)
+
+    # Save model
+    model.save("mnist_model.h5")
+    return model
+
+# Load / Train model
+model = train_and_load_model()
+uploaded_file = st.file_uploader("Upload a digit image", type=["png", "jpg", "jpeg"])
+
+if uploaded_file is not None:
+    # Convert to grayscale
+    img = Image.open(uploaded_file).convert("L")
+    img = img.resize((28, 28))
+
+    st.image(img, caption="Uploaded Image", width=150)
+
+    # Preprocess
+    img_array = np.array(img)
+    img_array = img_array.reshape(1, 28, 28) / 255.0
+
+    # Predict digit
+    prediction = model.predict(img_array)
+    digit = np.argmax(prediction)
+    st.success(f"Predicted Digit: {digit}")
