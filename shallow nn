@@ -1,0 +1,64 @@
+# Shallow Neural Network for Fashion MNIST Classification
+
+# Step 1: Import Libraries
+
+import tensorflow as tf
+
+from tensorflow.keras import layers, models
+
+import matplotlib.pyplot as plt
+
+# Step 2: Load the Fashion MNIST dataset
+
+fashion_mnist = tf.keras.datasets.fashion_mnist
+
+(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+# Step 3: Normalize the pixel values (0–255 -> 0–1)
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+# Step 4: Define class names (for visualization)
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+
+
+# Step 5: Build a shallow neural network model
+# (1 hidden layer with 128 neurons + output layer)
+model = models.Sequential([
+    layers.Flatten(input_shape=(28, 28)),   # Input layer
+    layers.Dense(128, activation='relu'),   # Hidden layer
+    layers.Dense(10, activation='softmax')  # Output layer (10 classes)
+])
+
+# Step 6: Compile the model
+model.compile(optimizer='adam',
+      loss='sparse_categorical_crossentropy',
+    metrics=['accuracy'])
+
+# Step 7: Train the model
+history = model.fit(x_train, y_train, epochs=10, validation_split=0.1)
+# Step 8: Evaluate the model
+test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
+print(f"\n✅ Test Accuracy: {test_acc:.4f}")
+
+# Step 9: Visualize training progress
+
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy over Epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+# Step 10: Display some predictions
+import numpy as np
+predictions = model.predict(x_test)
+plt.figure(figsize=(10, 5))
+for i in range(10):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(x_test[i], cmap='gray')
+    plt.title(f"True: {class_names[y_test[i]]}\nPred: {class_names[np.argmax(predictions[i])]}")
+    plt.axis('off')
+plt.show()
