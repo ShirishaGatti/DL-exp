@@ -1,0 +1,59 @@
+Exp3:                                                             import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.optimizers import Adam
+from google.colab import files
+from PIL import Image                                                           # 1.Load data
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+# Normalize to [0,1]
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+# One-hot encoding
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)                                  # Build deep neural network model
+model = Sequential([
+    Flatten(input_shape=(28, 28)),
+    Dense(256, activation='relu'),
+    Dense(128, activation='relu'),
+    Dense(64, activation='relu'),
+    Dense(10, activation='softmax')
+])                                                                                     # Compile
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer=Adam(),
+    metrics=['accuracy']
+)
+# Train
+history = model.fit(
+    x_train, y_train,
+    epochs=3,
+    batch_size=32,
+    validation_split=0.1,
+    verbose=2
+)
+# Evalute
+test_loss, test_acc = model.evaluate(x_test, y_test, verbose=0)
+print(f'\n✅ Test Accuracy: {test_acc * 100:.2f}%')                                                                           # Upload image
+print("Upload an image file of a handwritten digit:")
+uploaded = files.upload()
+filename = list(uploaded.keys())[0]
+# Open, convert, resize
+img = Image.open(filename).convert('L')   # Convert to grayscale
+img = img.resize((28, 28))                # Resize to MNIST size
+# Convert to array + normalize
+img_array = np.array(img) / 255.0
+# MNIST uses white digit on black → invert if needed
+#img_array = 1 - img_array                                         # 9. Display processed image
+plt.imshow(img_array, cmap='gray')
+plt.title("Uploaded Image (Processed)")
+plt.axis("off")
+plt.show()                                                                       # Reshape for model
+img_array = img_array.reshape(1, 28, 28)
+# Predict
+prediction = model.predict(img_array)
+predicted_digit = np.argmax(prediction)
+print(f"\nPredicted Digit: {predicted_digit}")
