@@ -1,0 +1,67 @@
+Exp4:                                                            import tensorflow as tf
+from tensorflow.keras import layers, models, optimizers
+import matplotlib.pyplot as plt
+import numpy as np
+
+fashion_mnist = tf.keras.datasets.fashion_mnist
+(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0                      def build_and_train_model(hidden_layers=[128, 64],
+                          activation='relu',
+                          optimizer='adam',
+                          learning_rate=None,
+                          batch_size=128,
+                          epochs=3):
+
+    print(f"\nTraining model with:")
+    print(f"Hidden layers: {hidden_layers}")
+    print(f"Activation: {activation}")
+    print(f"Optimizer: {optimizer}")
+    print(f"Learning rate: {learning_rate}")
+    print(f"Batch size: {batch_size}")
+    print(f"Epochs: {epochs}")
+
+    model = models.Sequential()
+    model.add(layers.Flatten(input_shape=(28, 28)))
+
+    for units in hidden_layers:
+        model.add(layers.Dense(units, activation=activation))
+    model.add(layers.Dense(10, activation='softmax'))
+
+    if optimizer == 'adam':
+        opt = optimizers.Adam(learning_rate=learning_rate if learning_rate else 0.001)
+    elif optimizer == 'sgd':
+        opt = optimizers.SGD(learning_rate=learning_rate if learning_rate else 0.01)
+    elif optimizer == 'rmsprop':
+        opt = optimizers.RMSprop(learning_rate=learning_rate if learning_rate else 0.001)
+    else:
+        opt = 'adam'
+
+    model.compile(optimizer=opt,
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    history = model.fit(x_train, y_train,
+                        validation_split=0.1,
+                        epochs=epochs,
+                        batch_size=batch_size)
+
+    test_loss, test_acc = model.evaluate(x_test, y_test, verbose=0)
+    print(f"Test Accuracy: {test_acc:.4f}")
+
+    plt.figure(figsize=(6, 4))
+    plt.plot(history.history['accuracy'], label='Train Acc')
+    plt.plot(history.history['val_accuracy'], label='Val Acc')
+    plt.title('Training vs Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.show()
+    return test_acc
+
+acc1 = build_and_train_model(hidden_layers=[64], optimizer='sgd', learning_rate=0.01, epochs=10)
+acc2 = build_and_train_model(hidden_layers=[256, 128], optimizer='adam', learning_rate=0.001, epochs=10)
+acc3 = build_and_train_model(hidden_layers=[512, 256, 128], optimizer='rmsprop', learning_rate=0.0005, epochs=10)
+print("\nResults:")
+print(f"SGD accuracy: {acc1:.4f}")
+print(f"Adam accuracy: {acc2:.4f}")
+print(f"RMSprop accuracy: {acc3:.4f}")
