@@ -1,0 +1,54 @@
+Exp7:                                                                            import tensorflow as tf
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras import models, layers, optimizers
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.utils import to_categorical
+import matplotlib.pyplot as plt
+import numpy as np                                                   # Step 1: Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+# Normalize images
+x_train = x_train.astype('float32') / 255.0
+x_test = x_test.astype('float32') / 255.0
+
+# One-hot encode labels
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)                                  # Step 2: Instantiate VGG16 convolutional base (exclude top)
+conv_base = VGG16(weights='imagenet',
+                  include_top=False,
+                  input_shape=(32, 32, 3))
+
+conv_base.trainable = False  # Freeze the convolutional base                                                        # Step 3: Define the model
+model = models.Sequential()
+model.add(conv_base)
+model.add(layers.Flatten())
+model.add(layers.Dense(256, activation='relu'))
+model.add(layers.Dropout(0.5))
+model.add(layers.Dense(10, activation='softmax'))                                                # Step 4: Compile the model
+model.compile(optimizer=optimizers.Adam(learning_rate=1e-4),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])                                     # Step 5: Train the model
+history = model.fit(x_train, y_train,
+                    epochs=5,
+                    batch_size=64,
+                    validation_data=(x_test, y_test))                  # Step 6: Plot the results
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1, len(acc) + 1)
+
+plt.figure(figsize=(12,5))
+plt.subplot(1,2,1)
+plt.plot(epochs, acc, 'b-', label='Training acc')
+plt.plot(epochs, val_acc, 'b', label='Validation acc')
+plt.title('Training and Validation Accuracy')
+plt.legend()
+
+plt.subplot(1,2,2)
+plt.plot(epochs, loss, 'r-', label='Training loss')
+plt.plot(epochs, val_loss, 'r', label='Validation loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+plt.show()
