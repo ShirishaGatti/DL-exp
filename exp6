@@ -1,0 +1,65 @@
+Exp6:                                                                             import tensorflow as tf
+from tensorflow.keras import layers, models
+import matplotlib.pyplot as plt
+from tensorflow.keras.utils import to_categorical                                                               # 1. Load CIFAR-10 dataset
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
+# 2. Preprocess the images
+# 2.2 Normalize input images: scale pixel values from [0,255] to [0,1]
+train_images = train_images.astype('float32') / 255.0
+test_images = test_images.astype('float32') / 255.0
+
+# 2.3 Convert labels to one-hot encoding
+num_classes = 10
+train_labels_cat = to_categorical(train_labels, num_classes)
+test_labels_cat = to_categorical(test_labels, num_classes)                                                                 # 3. Design CNN model
+def build_cnn_model():
+    model = models.Sequential()
+
+    # Conv Block 1
+    model.add(layers.Conv2D(32, (3,3), activation='relu', input_shape=(32,32,3)))
+    model.add(layers.MaxPooling2D((2,2)))
+
+    # Conv Block 2
+    model.add(layers.Conv2D(64, (3,3), activation='relu'))
+    model.add(layers.MaxPooling2D((2,2)))
+
+    # Conv Block 3
+    model.add(layers.Conv2D(64, (3,3), activation='relu'))
+
+    # Flatten and Dense layers
+    model.add(layers.Flatten())
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(num_classes, activation='softmax'))  # Softmax for multi-class
+
+    return model                                                             # 4. Build model and optimize during different hyperparameters
+
+model = build_cnn_model()
+# Compile model with optimizer and loss function
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])                                      # 5. Track history of training and validation
+history = model.fit(train_images, train_labels_cat,
+                    epochs=3,
+                    batch_size=64,
+                    validation_data=(test_images, test_labels_cat),
+                    verbose=2)                                                # 6. Plot training and validation accuracy and loss
+plt.figure(figsize=(12,5))
+
+# Accuracy plot
+plt.subplot(1,2,1)
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+
+# Loss plot
+plt.subplot(1,2,2)
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
