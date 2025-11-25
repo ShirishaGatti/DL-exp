@@ -1,0 +1,55 @@
+Exp5:                                                                 # Step 1: Load the Boston Housing dataset
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow import keras
+from tensorflow.keras import layers
+from sklearn.model_selection import KFold                    # Load Boston Housing dataset
+(train_data, train_targets), (test_data, test_targets) = keras.datasets.boston_housing.load_data()
+
+print("Training data shape:", train_data.shape)
+print("Test data shape:", test_data.shape)
+print("Example features:", train_data[0])
+print("Example target (Price):", train_targets[0])                                                             # Step 2: Normalize the data (feature scaling)
+mean = train_data.mean(axis=0)
+std = train_data.std(axis=0)
+train_data = (train_data - mean) / std
+test_data = (test_data - mean) / std                               def build_model():
+    model = keras.Sequential([
+        layers.Dense(64, activation="relu", input_shape=(train_data.shape[1],)),
+        layers.Dense(64, activation="relu"),
+        layers.Dense(1)   # regression → single value output
+    ])
+
+    model.compile(optimizer="rmsprop", loss="mse", metrics=["mae"])
+    return model                                                          k = 4
+num_epochs = 100
+all_scores = []
+all_mae_histories = []
+
+kfold = KFold(n_splits=k, shuffle=True, random_state=42)
+
+for train_idx, val_idx in kfold.split(train_data):
+    partial_train_data, val_data = train_data[train_idx], train_data[val_idx]
+    partial_train_targets, val_targets = train_targets[train_idx], train_targets[val_idx]
+
+    model = build_model()
+    history = model.fit(
+        partial_train_data, partial_train_targets,
+        validation_data=(val_data, val_targets),
+        epochs=num_epochs,
+        batch_size=16,
+        verbose=0
+    )
+
+    mae_history = history.history["val_mae"]
+    all_mae_histories.append(mae_history)                        # Compute average of validation MAE for each epoch
+average_mae_history = [
+    np.mean([x[i] for x in all_mae_histories]) for i in range(num_epochs)
+]
+
+# Plot validation MAE
+plt.plot(range(1, len(average_mae_history) + 1), average_mae_history)
+plt.xlabel("Epochs")
+plt.ylabel("Validation MAE")
+plt.title("Validation MAE vs Epochs (K-Fold)")
+plt.show()
