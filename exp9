@@ -1,0 +1,89 @@
+Exp9:                                                                        import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+
+# 1. Download/Load the Data
+data = """
+Global markets see a steady rise after tech stocks rebound.
+New climate report warns of extreme weather events.
+Central bank considers interest rate changes.
+Scientists discover new species in the deep ocean.
+Space agency announces mission to explore distant planets.
+"""                                                                                # 2. Preprocess the Raw Data
+# Initialize the tokenizer
+tokenizer = Tokenizer()
+
+# Create the vocabulary based on the text corpus
+tokenizer.fit_on_texts([data])
+
+# Total number of words in the vocabulary
+total_words = len(tokenizer.word_index) + 1
+
+# Convert the text into sequences of integers
+input_sequences = []
+for line in data.strip().split('\n'):
+    token_list = tokenizer.texts_to_sequences([line])[0]
+    # Create n-gram sequences for next-word prediction
+    for i in range(1, len(token_list)):
+        n_gram_sequence = token_list[:i+1]
+        input_sequences.append(n_gram_sequence)                  # 3. Prepare Data for the Model
+max_sequence_len = max([len(x) for x in input_sequences])
+padded_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+
+# Create predictors (X) and target label (y)
+X = padded_sequences[:, :-1]
+labels = padded_sequences[:, -1]
+
+# Convert the labels to one-hot encoding
+y = to_categorical(labels, num_classes=total_words)                                              # 4. Develop the LSTM Neural Network
+embedding_dim = 100
+
+print("Building the LSTM Model...")
+model = Sequential()
+
+#  Converts word indices into dense vectors of a fixed size.
+model.add(Embedding(input_dim=total_words, output_dim=embedding_dim, input_length=max_sequence_len-1))
+
+# Learns patterns from the sequence of vectors.
+model.add(LSTM(150))
+
+# A fully connected layer that outputs a probability for each word in the vocabulary.
+model.add(Dense(total_words, activation='softmax'))
+
+# Compile the model
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Print a summary of the model architecture
+model.summary()                                                        # 5. Train the Model
+print("\nTraining the model...")
+history = model.fit(X, y, epochs=5, verbose=1)                                                                                   # 6. Generate Text (Using the Model)
+print("\n--- Text Generation Example ---")
+seed_text = "New climate report"
+next_words = 5
+
+for _ in range(next_words):
+    # Preprocess the seed text just like the training data
+    token_list = tokenizer.texts_to_sequences([seed_text])[0]
+    padded_token_list = pad_sequences([token_list], maxlen=max_sequence_len-1, padding='pre')
+
+    # Predict the next word's probability distribution
+    predicted_probabilities = model.predict(padded_token_list, verbose=0)
+
+    # Get the index of the word with the highest probability
+    predicted_index = np.argmax(predicted_probabilities, axis=-1)[0]
+
+    # Find the corresponding word
+    output_word = ""
+    for word, index in tokenizer.word_index.items():
+        if index == predicted_index:
+            output_word = word
+            break
+
+    # Append the predicted word to the seed text
+    seed_text += " " + output_word
+
+print("Generated Text:", seed_text)
